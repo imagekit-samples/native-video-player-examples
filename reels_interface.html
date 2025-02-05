@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Reels</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Video.js CSS and JS files + HTTP Streaming plugin -->
+    <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+    <script src="https://unpkg.com/@videojs/http-streaming@3.10.0/dist/videojs-http-streaming.min.js"></script>
+
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            max-width: 660px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .grid-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .thumbnail {
+            position: relative;
+            cursor: pointer;
+            aspect-ratio: 9/16;
+            overflow: hidden;
+        }
+
+        .thumbnail img, .thumbnail video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .thumbnail video {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .video-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+        }
+
+        .video-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 56.25vh; /* Maintain 9:16 aspect ratio */
+            height: 100vh;
+            max-height: 100vh;
+        }
+
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            z-index: 1001;
+        }
+
+        .stats-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+            padding: 12px 8px;
+            color: white;
+            font-size: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Add Video.js custom styles */
+        .video-js {
+            width: 100%;
+            height: 100%;
+        }
+        .vjs-poster {
+            background-size: cover;
+        }
+    </style>
+</head>
+<body>
+    <header class="text-center py-8 space-y-4">
+        <img src="https://ik.imgkit.net/ikmedia/logo/light_T4buIzohVH.svg" alt="ImageKit" class="h-8 mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800">Video Reels</h1>
+        <p class="text-lg text-gray-600">Browse and watch videos in a reels-style interface</p>
+    </header>
+
+    <div class="max-w-[660px] mx-auto">
+        <div class="flex justify-center space-x-8 mb-8 border-b">
+            <button class="px-4 py-2 text-gray-800 font-medium border-b-2 border-blue-500">Latest</button>
+            <button class="px-4 py-2 text-gray-500 hover:text-gray-800">Trending</button>
+            <button class="px-4 py-2 text-gray-500 hover:text-gray-800">News</button>
+            <button class="px-4 py-2 text-gray-500 hover:text-gray-800">Sports</button>
+        </div>
+    </div>
+
+    <div class="grid-container" id="videoGrid">
+        <!-- Grid items will be dynamically populated -->
+    </div>
+
+    <div id="videoModal" class="video-modal">
+        <span class="close-btn" onclick="closeVideo()">&times;</span>
+        <div class="video-container">
+            <video-js id="videoPlayer" class="vjs-default-skin vjs-fluid" controls>
+                <source src="" type="application/x-mpegURL">
+            </video-js>
+        </div>
+    </div>
+
+    <script>
+        // Function to format numbers (e.g., 1.2K, 1.5M)
+        function formatCount(count) {
+            if (count >= 1000000) {
+                return (count / 1000000).toFixed(1) + 'M';
+            } else if (count >= 1000) {
+                return (count / 1000).toFixed(1) + 'K';
+            }
+            return count.toString();
+        }
+
+        // Data object for videos
+        const videosData = {
+            videos: [
+                {
+                    videoUrl: "https://ikmedia.imagekit.io/webinar-content/native-videos/tree_1.mp4",
+                    views: 789123,
+                    comments: 8932
+                },
+                {
+                    videoUrl: "https://ikmedia.imagekit.io/webinar-content/native-videos/travel_1.mp4",
+                    views: 123456,
+                    comments: 2145
+                },
+                {
+                    videoUrl: "https://ik.imagekit.io/ikmedia/webinar-content/native-videos/record_1.mp4",
+                    views: 567890,
+                    comments: 6789
+                },
+                {
+                    videoUrl: "https://ik.imagekit.io/ikmedia/webinar-content/native-videos/leopard_1.mp4",
+                    views: 345678,
+                    comments: 4567
+                },
+                {
+                    videoUrl: "https://ik.imagekit.io/ikmedia/webinar-content/native-videos/airpods_1.mp4",
+                    views: 901234,
+                    comments: 7890
+                },
+                {
+                    videoUrl: "https://ik.imagekit.io/ikmedia/webinar-content/native-videos/diving_1.mp4",
+                    views: 432109,
+                    comments: 5432
+                },
+                {
+                    videoUrl: "https://ik.imagekit.io/ikmedia/webinar-content/native-videos/vase_1.mp4",
+                    views: 678901,
+                    comments: 3210
+                },
+                {
+                    videoUrl: "https://ik.imagekit.io/ikmedia/webinar-content/native-videos/road_1.mp4",
+                    views: 234567,
+                    comments: 4321
+                },
+                {
+                    videoUrl: "https://ik.imagekit.io/ikmedia/webinar-content/native-videos/plate_1.mp4",
+                    views: 445678,
+                    comments: 5543
+                },
+                {
+                    videoUrl: "https://ik.imagekit.io/ikmedia/webinar-content/native-videos/pastry_1.mp4",
+                    views: 667890,
+                    comments: 6654
+                },
+                {
+                    videoUrl: "https://ik.imagekit.io/ikmedia/webinar-content/native-videos/food_1.mp4",
+                    views: 889012,
+                    comments: 7765
+                },
+                {
+                    videoUrl: "https://ik.imagekit.io/ikmedia/webinar-content/native-videos/skate_1.mp4",
+                    views: 245678,
+                    comments: 3421
+                }
+            ]
+        };
+
+        // Function to construct URLs
+        function constructUrls(baseUrl) {
+            return {
+                videoUrl: baseUrl,
+                hlsUrl: `${baseUrl}/ik-master.m3u8?tr=sr-480_720_1080`,
+                thumbnailUrl: `${baseUrl}/ik-thumbnail.jpg?tr=w-400,h-600,so-2`,
+                trailerUrl: `${baseUrl}?tr=w-400,h-600,so-2,du-5`
+            };
+        }
+
+        // Function to populate the grid
+        function populateVideoGrid() {
+            const grid = document.getElementById('videoGrid');
+            videosData.videos.forEach((video, index) => {
+                const urls = constructUrls(video.videoUrl);
+                const thumbnail = document.createElement('div');
+                thumbnail.className = 'thumbnail';
+                thumbnail.onclick = () => openVideo(urls.hlsUrl);
+                
+                const img = document.createElement('img');
+                img.src = urls.thumbnailUrl;
+                img.alt = `Thumbnail ${index + 1}`;
+                
+                const trailerVideo = document.createElement('video');
+                trailerVideo.src = urls.trailerUrl;
+                trailerVideo.muted = true;
+                trailerVideo.loop = true;
+                trailerVideo.preload = "none";
+                
+                const stats = document.createElement('div');
+                stats.className = 'stats-overlay';
+                stats.innerHTML = `
+                    <span><i class="fas fa-eye"></i> ${formatCount(video.views)}</span>
+                    <span><i class="fas fa-comment"></i> ${formatCount(video.comments)}</span>
+                `;
+                
+                let hoverTimer;
+                
+                thumbnail.addEventListener('mouseenter', () => {
+                    hoverTimer = setTimeout(() => {
+                        trailerVideo.style.display = 'block';
+                        trailerVideo.play().catch(e => console.log('Playback failed:', e));
+                    }, 300);
+                });
+                
+                thumbnail.addEventListener('mouseleave', () => {
+                    clearTimeout(hoverTimer);
+                    trailerVideo.style.display = 'none';
+                    trailerVideo.pause();
+                    trailerVideo.currentTime = 0;
+                });
+                
+                thumbnail.appendChild(img);
+                thumbnail.appendChild(trailerVideo);
+                thumbnail.appendChild(stats);
+                grid.appendChild(thumbnail);
+            });
+        }
+
+        // Call the function to populate the grid
+        populateVideoGrid();
+
+        // Initialize Video.js player
+        const player = videojs('videoPlayer', {
+            controls: false,
+            preload: 'auto',
+        });
+
+        function openVideo(hlsUrl) {
+            const modal = document.getElementById('videoModal');
+            modal.style.display = 'block';
+            player.src({
+                src: hlsUrl,
+                type: 'application/x-mpegURL'
+            });
+            player.play();
+        }
+
+        function closeVideo() {
+            const modal = document.getElementById('videoModal');
+            player.pause();
+            player.src('');
+            modal.style.display = 'none';
+        }
+
+        // Close modal when clicking outside the video
+        document.getElementById('videoModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeVideo();
+            }
+        });
+    </script>
+</body>
+</html>
